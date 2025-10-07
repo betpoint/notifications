@@ -2,32 +2,40 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Glide WebToNative Bridge</title>
+  <title>Link Device</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
 <body>
-  <p style="text-align:center; margin-top:50px;">Linking your device...</p>
+  <p style="text-align:center; margin-top:50px;">Enter your Glide User ID to link your device:</p>
+  <div style="text-align:center;">
+    <input type="text" id="userIdInput" placeholder="Enter your User ID">
+    <button onclick="linkDevice()">Link Device</button>
+  </div>
 
   <script>
-    // Dynamically load WebToNative JS
+  function linkDevice() {
+    const glideUserId = document.getElementById("userIdInput").value;
+    if (!glideUserId) {
+      alert("Please enter your User ID.");
+      return;
+    }
+
     if (!window.WTN) {
       var script = document.createElement('script');
       script.src = "https://unpkg.com/webtonative@1.0.77/webtonative.min.js";
       script.onload = function() {
-        console.log("WebToNative JS loaded");
-
-        // Read Glide user ID from URL parameter
-        const params = new URLSearchParams(window.location.search);
-        const glideUserId = params.get("uid");
-
-        if (glideUserId && window.WTN) {
-          // Link device to user
-          window.WTN.setExternalUserId(glideUserId);
-          console.log("Device linked to Glide user:", glideUserId);
-        }
+        window.WTN.setExternalUserId(glideUserId);
+        alert("Device linked!");
       };
       document.head.appendChild(script);
+    } else {
+      window.WTN.setExternalUserId(glideUserId);
+      alert("Device linked!");
     }
+
+    document.getElementById("userIdInput").style.display = "none";
+    document.querySelector("button").style.display = "none";
+  }
   </script>
 </body>
 </html>
