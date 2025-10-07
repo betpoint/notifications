@@ -4,79 +4,85 @@
   <meta charset="UTF-8">
   <title>Link Device</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { 
+      font-family: sans-serif; 
+      text-align: center; 
+      margin-top: 60px;
+    }
+    input { 
+      padding: 8px; 
+      font-size: 16px; 
+      width: 220px;
+    }
+    button { 
+      padding: 8px 18px; 
+      font-size: 16px; 
+      margin-left: 8px;
+      cursor: pointer;
+    }
+  </style>
 </head>
 <body>
-  <p style="text-align:center; margin-top:50px;">Enter your Glide User ID to link your device:</p>
-  <div style="text-align:center;">
-    <input type="text" id="userIdInput" placeholder="Enter your User ID">
-    <button id="linkButton">Link Device</button>
-  </div>
+  <p>Enter your Glide User ID to link your device:</p>
+  <input type="text" id="userIdInput" placeholder="Enter your User ID">
+  <button onclick="linkDevice()">Link Device</button>
 
   <script>
-  const redirectUrl = "https://thebetpoint.app/dl/063968";
+    const redirectUrl = "https://thebetpoint.app/dl/063968";
 
-  // WebToNative override setup
-  window.WTN = window.WTN || {};
-  window.WTN.OneSignal = {
-    setExternalUserId: function(id) {
-      try {
-        Android.setExternalUserId(id); // Android bridge
-        console.log("Android external ID set:", id);
-      } catch (e) {
-        console.log("Android bridge not available:", e);
+    // ✅ WebToNative JS Override for setting external user ID
+    window.WTN = window.WTN || {};
+    window.WTN.OneSignal = {
+      setExternalUserId: function(id) {
+        try {
+          // Android bridge
+          if (window.Android && typeof window.Android.setExternalUserId === "function") {
+            window.Android.setExternalUserId(id);
+            console.log("✅ Android externalUserId set:", id);
+          }
+          // iOS bridge
+          else if (window.webkit?.messageHandlers?.setExternalUserId) {
+            window.webkit.messageHandlers.setExternalUserId.postMessage(id);
+            console.log("✅ iOS externalUserId set:", id);
+          } 
+          // Retry if bridge not ready yet
+          else {
+            console.warn("❌ Bridge not ready, retrying...");
+            setTimeout(() => window.WTN.OneSignal.setExternalUserId(id), 200);
+          }
+        } catch (err) {
+          console.error("Error setting external user ID:", err);
+        }
+      }
+    };
+
+    // ✅ Link device function
+    function linkDevice() {
+      const userId = document.getElementById("userIdInput").value.trim();
+      if (!userId) {
+        alert("Please enter your User ID.");
+        return;
       }
 
       try {
-        webkit.messageHandlers.setExternalUserId.postMessage(id); // iOS bridge
-        console.log("iOS external ID set:", id);
+        // Call the override bridge method
+        if (window.WTN?.OneSignal?.setExternalUserId) {
+          window.WTN.OneSignal.setExternalUserId(userId);
+          alert("Device linked successfully!");
+        } else {
+          console.warn("WTN bridge not available, retrying...");
+          setTimeout(() => window.WTN.OneSignal.setExternalUserId(userId), 300);
+        }
       } catch (e) {
-        console.log("iOS bridge not available:", e);
+        console.error("Error linking device:", e);
       }
-    }
-  };
 
-  function finishLink() {
-    alert("Device linked!");
-    document.getElementById("userIdInput").style.display = "none";
-    document.getElementById("linkButton").style.display = "none";
-
-    if (window.WTN && typeof window.WTN.closeWebView === 'function') {
-      // Try to close WebView, then redirect as backup
-      window.WTN.closeWebView();
+      // Redirect after 1 second
       setTimeout(() => {
         window.location.href = redirectUrl;
-      }, 500);
-    } else {
-      // Regular redirect if not in wrapper
-      window.location.href = redirectUrl;
+      }, 1000);
     }
-  }
-
-  function linkDevice() {
-    const glideUserId = document.getElementById("userIdInput").value.trim();
-    if (!glideUserId) {
-      alert("Please enter your User ID.");
-      return;
-    }
-
-    if (window.WTN && window.WTN.OneSignal && typeof window.WTN.OneSignal.setExternalUserId === "function") {
-      window.WTN.OneSignal.setExternalUserId(glideUserId);
-      finishLink();
-    } else {
-      // Load WebToNative if not available yet
-      var script = document.createElement('script');
-      script.src = "https://unpkg.com/webtonative@1.0.77/webtonative.min.js";
-      script.onload = function() {
-        if (window.WTN && window.WTN.OneSignal) {
-          window.WTN.OneSignal.setExternalUserId(glideUserId);
-        }
-        finishLink();
-      };
-      document.head.appendChild(script);
-    }
-  }
-
-  document.getElementById("linkButton").addEventListener("click", linkDevice);
   </script>
 </body>
 </html>
