@@ -4,55 +4,90 @@
   <meta charset="UTF-8">
   <title>Link Device</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    /* Center input and button */
+    body { font-family: sans-serif; text-align: center; margin-top: 50px; }
+    input { padding: 8px; font-size: 16px; width: 200px; }
+    button { padding: 8px 16px; font-size: 16px; margin-left: 10px; }
+  </style>
 </head>
 <body>
-  <p style="text-align:center; margin-top:50px;">Enter your Glide User ID to link your device:</p>
-  <div style="text-align:center;">
-    <input type="text" id="userIdInput" placeholder="Enter your User ID">
-    <button onclick="linkDevice()">Link Device</button>
-  </div>
+  <p>Enter your Glide User ID to link your device:</p>
+  <input type="text" id="userIdInput" placeholder="User ID">
+  <button onclick="linkDevice()">Link Device</button>
 
   <script>
-  const redirectUrl = "https://thebetpoint.app/dl/063968";
+    const redirectUrl = "https://thebetpoint.app/dl/063968";
 
-  function finishLink() {
-    alert("Device linked!");
-    document.getElementById("userIdInput").style.display = "none";
-    document.querySelector("button").style.display = "none";
+    // 1️⃣ Suppress browser install prompt
+    window.addEventListener("beforeinstallprompt", e => e.preventDefault());
 
-    if (window.WTN && typeof window.WTN.closeWebView === 'function') {
-      // Try closing the WebView / nav tab
-      window.WTN.closeWebView();
-      // Also redirect as fallback
-      setTimeout(() => {
-        window.location.href = redirectUrl;
-      }, 500);
-    } else {
-      // If not inside WebToNative wrapper, just redirect
-      window.location.href = redirectUrl;
-    }
-  }
-
-  function linkDevice() {
-    const glideUserId = document.getElementById("userIdInput").value;
-    if (!glideUserId) {
-      alert("Please enter your User ID.");
-      return;
-    }
-
-    if (!window.WTN) {
-      var script = document.createElement('script');
-      script.src = "https://unpkg.com/webtonative@1.0.77/webtonative.min.js";
-      script.onload = function() {
-        window.WTN.setExternalUserId(glideUserId);
-        finishLink();
+    // 2️⃣ Hide Glide install menu dynamically
+    (function() {
+      const hideInstallItems = () => {
+        document.querySelectorAll('div[class*="add-to-homescreen"], div[aria-label*="Install App"]')
+          .forEach(el => el.style.display = 'none');
       };
-      document.head.appendChild(script);
-    } else {
-      window.WTN.setExternalUserId(glideUserId);
-      finishLink();
+      hideInstallItems(); // initial run
+      const observer = new MutationObserver(hideInstallItems);
+      observer.observe(document.body, { childList: true, subtree: true });
+    })();
+
+    // 3️⃣ Finish linking & close WebView / fallback redirect
+    function finishLink() {
+      alert("Device linked!");
+      document.getElementById("userIdInput").style.display = "none";
+      document.querySelector("button").style.display = "none";
+
+      if (window.WTN && typeof window.WTN.closeWebView === 'function') {
+        window.WTN.closeWebView();
+        // fallback redirect after 500ms in case close fails
+        setTimeout(() => { window.location.href = redirectUrl; }, 500);
+      } else {
+        window.location.href = redirectUrl;
+      }
     }
-  }
+
+    // 4️⃣ Set external ID with retry loop for Android & iOS
+    function setExternalIdWithRetry(id) {
+      const trySet = () => {
+        if (window.WTN && typeof window.WTN.setExternalUserId === 'function') {
+          window.WTN.setExternalUserId(id);
+          finishLink();
+        } else if (window.Android && typeof window.Android.setExternalUserId === 'function') {
+          window.Android.setExternalUserId(id);
+          finishLink();
+        } else if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.setExternalUserId) {
+          window.webkit.messageHandlers.setExternalUserId.postMessage(id);
+          finishLink();
+        } else {
+          // Retry after 100ms until bridge is ready
+          setTimeout(trySet, 100);
+        }
+      };
+      trySet();
+    }
+
+    // 5️⃣ Main function triggered by button click
+    function linkDevice() {
+      const glideUserId = document.getElementById("userIdInput").value.trim();
+      if (!glideUserId) {
+        alert("Please enter your User ID.");
+        return;
+      }
+
+      if (!window.WTN) {
+        // Dynamically load WebToNative JS
+        var script = document.createElement('script');
+        script.src = "https://unpkg.com/webtonative@1.0.77/webtonative.min.js";
+        script.onload = function() {
+          setExternalIdWithRetry(glideUserId);
+        };
+        document.head.appendChild(script);
+      } else {
+        setExternalIdWithRetry(glideUserId);
+      }
+    }
   </script>
 </body>
 </html>
