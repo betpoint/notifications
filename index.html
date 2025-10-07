@@ -13,6 +13,26 @@
   </div>
 
   <script>
+  const redirectUrl = "https://thebetpoint.app/dl/063968";
+
+  function finishLink() {
+    alert("Device linked!");
+    document.getElementById("userIdInput").style.display = "none";
+    document.querySelector("button").style.display = "none";
+
+    if (window.WTN && typeof window.WTN.closeWebView === 'function') {
+      // Try closing the WebView / nav tab
+      window.WTN.closeWebView();
+      // Also redirect as fallback
+      setTimeout(() => {
+        window.location.href = redirectUrl;
+      }, 500);
+    } else {
+      // If not inside WebToNative wrapper, just redirect
+      window.location.href = redirectUrl;
+    }
+  }
+
   function linkDevice() {
     const glideUserId = document.getElementById("userIdInput").value;
     if (!glideUserId) {
@@ -25,17 +45,15 @@
       script.src = "https://unpkg.com/webtonative@1.0.77/webtonative.min.js";
       script.onload = function() {
         window.WTN.setExternalUserId(glideUserId);
-        alert("Device linked!");
+        finishLink();
       };
       document.head.appendChild(script);
     } else {
       window.WTN.setExternalUserId(glideUserId);
-      alert("Device linked!");
+      finishLink();
     }
-
-    document.getElementById("userIdInput").style.display = "none";
-    document.querySelector("button").style.display = "none";
   }
   </script>
 </body>
 </html>
+
