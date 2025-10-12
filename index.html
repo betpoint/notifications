@@ -42,13 +42,12 @@
 
   <p id="status"></p>
 
-  <!-- ✅ Make sure WebToNative is loaded before your script -->
+  <!-- ✅ WebToNative must load before the script -->
   <script src="https://unpkg.com/webtonative@1.0.77/webtonative.min.js"></script>
 
   <script>
-    const redirectUrl = "https://thebetpoint.app/dl/063968";
+    const fallbackUrl = "https://thebetpoint.app/dl/063968";
 
-    // ✅ Wait for WTN.OneSignal to be ready
     function waitForOneSignal(callback) {
       if (window.WTN?.OneSignal) {
         console.log("✅ WTN.OneSignal ready");
@@ -59,7 +58,6 @@
       }
     }
 
-    // ✅ Link device function
     function linkDevice() {
       const userId = document.getElementById("userIdInput").value.trim();
       const status = document.getElementById("status");
@@ -73,7 +71,6 @@
         status.textContent = "🔄 Linking device...";
         console.log("Setting external ID:", userId);
 
-        // ✅ Set external user ID
         OneSignalBridge.setExternalUserId(userId)
           .then(() => {
             console.log("✅ External ID set:", userId);
@@ -82,15 +79,20 @@
             OneSignalBridge.setTags({ linked: "true", user_id: userId });
             console.log("✅ Tags set for user:", userId);
 
-            // ✅ Verify and show status
             OneSignalBridge.getExternalUserId().then((id) => {
               console.log("📲 Current external ID:", id);
               status.textContent = `✅ Device linked successfully! External ID: ${id}`;
             });
 
-            // ✅ Redirect after success
+            // ✅ Redirect logic
             setTimeout(() => {
-              window.location.href = redirectUrl;
+              if (document.referrer && document.referrer !== window.location.href) {
+                console.log("🔙 Returning to previous page:", document.referrer);
+                window.location.href = document.referrer;
+              } else {
+                console.log("➡️ No referrer found, going to fallback:", fallbackUrl);
+                window.location.href = fallbackUrl;
+              }
             }, 1500);
           })
           .catch((err) => {
