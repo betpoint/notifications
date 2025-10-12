@@ -30,7 +30,7 @@
     }
     #status {
       margin-top: 20px;
-      font-size: 14px;
+      font-size: 16px;
       color: green;
     }
   </style>
@@ -42,18 +42,13 @@
 
   <p id="status"></p>
 
-  <!-- ✅ WebToNative must load before the script -->
   <script src="https://unpkg.com/webtonative@1.0.77/webtonative.min.js"></script>
 
   <script>
-    const fallbackUrl = "https://thebetpoint.app/dl/063968";
-
     function waitForOneSignal(callback) {
       if (window.WTN?.OneSignal) {
-        console.log("✅ WTN.OneSignal ready");
         callback(window.WTN.OneSignal);
       } else {
-        console.log("⏳ Waiting for WTN.OneSignal...");
         setTimeout(() => waitForOneSignal(callback), 400);
       }
     }
@@ -61,46 +56,31 @@
     function linkDevice() {
       const userId = document.getElementById("userIdInput").value.trim();
       const status = document.getElementById("status");
-
-      if (!userId) {
-        alert("Please enter your User ID.");
-        return;
-      }
+      if (!userId) return;
 
       waitForOneSignal((OneSignalBridge) => {
-        status.textContent = "🔄 Linking device...";
-        console.log("Setting external ID:", userId);
+        // Set external ID
+        OneSignalBridge.setExternalUserId(userId).then(() => {
+          // Set tags
+          OneSignalBridge.setTags({ linked: "true", user_id: userId });
 
-        OneSignalBridge.setExternalUserId(userId)
-          .then(() => {
-            console.log("✅ External ID set:", userId);
+          // ✅ Show message
+          status.textContent = "✅ Device linked!";
 
-            // ✅ Set tags
-            OneSignalBridge.setTags({ linked: "true", user_id: userId });
-            console.log("✅ Tags set for user:", userId);
-
-            OneSignalBridge.getExternalUserId().then((id) => {
-              console.log("📲 Current external ID:", id);
-              status.textContent = `✅ Device linked successfully! External ID: ${id}`;
-            });
-
-            // ✅ Redirect logic
-            setTimeout(() => {
-              if (document.referrer && document.referrer !== window.location.href) {
-                console.log("🔙 Returning to previous page:", document.referrer);
-                window.location.href = document.referrer;
-              } else {
-                console.log("➡️ No referrer found, going to fallback:", fallbackUrl);
-                window.location.href = fallbackUrl;
-              }
-            }, 1500);
-          })
-          .catch((err) => {
-            console.error("❌ Failed to set external ID:", err);
-            status.textContent = "❌ Error linking device. Try again.";
-          });
+          // Automatically go back after a short delay
+          setTimeout(() => {
+            if (document.referrer && document.referrer !== window.location.href) {
+              window.location.href = document.referrer;
+            } else if (window.WTN?.Navigation?.goBack) {
+              WTN.Navigation.goBack(); // If inside WTN app
+            } else {
+              window.location.href = "/"; // fallback to home
+            }
+          }, 800);
+        });
       });
     }
   </script>
 </body>
 </html>
+
