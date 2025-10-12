@@ -1,88 +1,63 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Link Device</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    body { 
-      font-family: sans-serif; 
-      text-align: center; 
-      margin-top: 60px;
-    }
-    input { 
-      padding: 8px; 
-      font-size: 16px; 
-      width: 220px;
-    }
-    button { 
-      padding: 8px 18px; 
-      font-size: 16px; 
-      margin-left: 8px;
-      cursor: pointer;
-    }
-  </style>
-</head>
-<body>
-  <p>Enter your Glide User ID to link your device:</p>
-  <input type="text" id="userIdInput" placeholder="Enter your User ID">
-  <button onclick="linkDevice()">Link Device</button>
+<script>
+  const redirectUrl = "https://thebetpoint.app/dl/063968";
 
-  <script>
-    const redirectUrl = "https://thebetpoint.app/dl/063968";
+  // Wait for WTN and OneSignal to initialize
+  function waitForOneSignal(callback) {
+    if (window.WTN?.OneSignal) {
+      callback(window.WTN.OneSignal);
+    } else {
+      console.log("⏳ Waiting for WTN.OneSignal...");
+      setTimeout(() => waitForOneSignal(callback), 300);
+    }
+  }
 
-    // ✅ WebToNative JS Override for setting external user ID
-    window.WTN = window.WTN || {};
-    window.WTN.OneSignal = {
-      setExternalUserId: function(id) {
-        try {
-          // Android bridge
-          if (window.Android && typeof window.Android.setExternalUserId === "function") {
-            window.Android.setExternalUserId(id);
-            console.log("✅ Android externalUserId set:", id);
-          }
-          // iOS bridge
-          else if (window.webkit?.messageHandlers?.setExternalUserId) {
-            window.webkit.messageHandlers.setExternalUserId.postMessage(id);
-            console.log("✅ iOS externalUserId set:", id);
-          } 
-          // Retry if bridge not ready yet
-          else {
-            console.warn("❌ Bridge not ready, retrying...");
-            setTimeout(() => window.WTN.OneSignal.setExternalUserId(id), 200);
-          }
-        } catch (err) {
-          console.error("Error setting external user ID:", err);
-        }
+  // ✅ Define custom function to set external user ID (without overwriting)
+  function setExternalUserId(id) {
+    try {
+      // Android bridge
+      if (window.Android?.setExternalUserId) {
+        window.Android.setExternalUserId(id);
+        console.log("✅ Android externalUserId set:", id);
       }
-    };
+      // iOS bridge
+      else if (window.webkit?.messageHandlers?.setExternalUserId) {
+        window.webkit.messageHandlers.setExternalUserId.postMessage(id);
+        console.log("✅ iOS externalUserId set:", id);
+      }
+      else {
+        console.warn("❌ Bridge not ready, retrying...");
+        setTimeout(() => setExternalUserId(id), 300);
+      }
+    } catch (err) {
+      console.error("Error setting external user ID:", err);
+    }
+  }
 
-    // ✅ Link device function
-    function linkDevice() {
-      const userId = document.getElementById("userIdInput").value.trim();
-      if (!userId) {
-        alert("Please enter your User ID.");
-        return;
+  // ✅ Link device function
+  function linkDevice() {
+    const userId = document.getElementById("userIdInput").value.trim();
+    if (!userId) {
+      alert("Please enter your User ID.");
+      return;
+    }
+
+    // Wait for the bridge, then do both actions
+    waitForOneSignal((OneSignalBridge) => {
+      // 1️⃣ Link the device
+      setExternalUserId(userId);
+
+      // 2️⃣ Set tag to track premium or link status
+      if (OneSignalBridge.setTags) {
+        OneSignalBridge.setTags({ linked: "true", user_id: userId });
+        console.log("✅ Tags set for user:", userId);
+      } else {
+        console.warn("⚠️ setTags not available yet");
       }
 
-      try {
-        // Call the override bridge method
-        if (window.WTN?.OneSignal?.setExternalUserId) {
-          window.WTN.OneSignal.setExternalUserId(userId);
-          alert("Device linked successfully!");
-        } else {
-          console.warn("WTN bridge not available, retrying...");
-          setTimeout(() => window.WTN.OneSignal.setExternalUserId(userId), 300);
-        }
-      } catch (e) {
-        console.error("Error linking device:", e);
-      }
-
-      // Redirect after 1 second
+      alert("Device linked and tags set successfully!");
       setTimeout(() => {
         window.location.href = redirectUrl;
       }, 1000);
-    }
-  </script>
-</body>
-</html>
+    });
+  }
+</script>
