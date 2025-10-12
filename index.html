@@ -85,10 +85,10 @@
             // Show success message
             status.textContent = "✅ Device linked successfully!";
 
-            // Redirect back in WebToNative app or fallback
+            // Close or go back in WebToNative app, otherwise fallback
             setTimeout(() => {
               if (window.WTN?.Navigation?.goBack) {
-                console.log("🔙 Using WTN.Navigation.goBack()");
+                console.log("🔙 Closing via WTN.Navigation.goBack()");
                 window.WTN.Navigation.goBack();
               } else {
                 console.log("➡️ No native back available, using fallback URL");
