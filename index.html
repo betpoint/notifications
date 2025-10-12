@@ -9,17 +9,29 @@
       font-family: sans-serif; 
       text-align: center; 
       margin-top: 60px;
+      color: #222;
     }
     input { 
       padding: 8px; 
       font-size: 16px; 
-      width: 220px;
+      width: 240px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
     }
     button { 
       padding: 8px 18px; 
       font-size: 16px; 
       margin-left: 8px;
       cursor: pointer;
+      border: none;
+      border-radius: 6px;
+      background: #007bff;
+      color: white;
+    }
+    #status {
+      margin-top: 20px;
+      font-size: 14px;
+      color: green;
     }
   </style>
 </head>
@@ -28,21 +40,18 @@
   <input type="text" id="userIdInput" placeholder="Enter your User ID">
   <button onclick="linkDevice()">Link Device</button>
 
+  <p id="status"></p>
+
   <!-- ✅ Make sure WebToNative is loaded before your script -->
   <script src="https://unpkg.com/webtonative@1.0.77/webtonative.min.js"></script>
 
   <script>
     const redirectUrl = "https://thebetpoint.app/dl/063968";
 
-    // Wait until DOM is ready
-    document.addEventListener("DOMContentLoaded", () => {
-      console.log("✅ Page loaded and ready");
-    });
-
-    // Wait for WTN.OneSignal to be ready
+    // ✅ Wait for WTN.OneSignal to be ready
     function waitForOneSignal(callback) {
       if (window.WTN?.OneSignal) {
-        console.log("✅ WTN.OneSignal is ready");
+        console.log("✅ WTN.OneSignal ready");
         callback(window.WTN.OneSignal);
       } else {
         console.log("⏳ Waiting for WTN.OneSignal...");
@@ -50,50 +59,44 @@
       }
     }
 
-    // ✅ Separate function to set external user ID (without overwriting)
-    function setExternalUserId(id) {
-      try {
-        if (window.Android?.setExternalUserId) {
-          window.Android.setExternalUserId(id);
-          console.log("✅ Android externalUserId set:", id);
-        } else if (window.webkit?.messageHandlers?.setExternalUserId) {
-          window.webkit.messageHandlers.setExternalUserId.postMessage(id);
-          console.log("✅ iOS externalUserId set:", id);
-        } else {
-          console.warn("❌ Bridge not ready, retrying...");
-          setTimeout(() => setExternalUserId(id), 400);
-        }
-      } catch (err) {
-        console.error("Error setting external user ID:", err);
-      }
-    }
-
-    // ✅ Link device logic
+    // ✅ Link device function
     function linkDevice() {
       const userId = document.getElementById("userIdInput").value.trim();
+      const status = document.getElementById("status");
+
       if (!userId) {
         alert("Please enter your User ID.");
         return;
       }
 
       waitForOneSignal((OneSignalBridge) => {
-        // Set external ID
-        setExternalUserId(userId);
+        status.textContent = "🔄 Linking device...";
+        console.log("Setting external ID:", userId);
 
-        // Set tags if available
-        if (OneSignalBridge.setTags) {
-          OneSignalBridge.setTags({ linked: "true", user_id: userId });
-          console.log("✅ Tags set for user:", userId);
-        } else {
-          console.warn("⚠️ setTags not available yet");
-        }
+        // ✅ Set external user ID
+        OneSignalBridge.setExternalUserId(userId)
+          .then(() => {
+            console.log("✅ External ID set:", userId);
 
-        alert("Device linked and tags set successfully!");
+            // ✅ Set tags
+            OneSignalBridge.setTags({ linked: "true", user_id: userId });
+            console.log("✅ Tags set for user:", userId);
 
-        // Redirect after success
-        setTimeout(() => {
-          window.location.href = redirectUrl;
-        }, 1000);
+            // ✅ Verify and show status
+            OneSignalBridge.getExternalUserId().then((id) => {
+              console.log("📲 Current external ID:", id);
+              status.textContent = `✅ Device linked successfully! External ID: ${id}`;
+            });
+
+            // ✅ Redirect after success
+            setTimeout(() => {
+              window.location.href = redirectUrl;
+            }, 1500);
+          })
+          .catch((err) => {
+            console.error("❌ Failed to set external ID:", err);
+            status.textContent = "❌ Error linking device. Try again.";
+          });
       });
     }
   </script>
